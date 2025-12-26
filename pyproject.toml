@@ -1,0 +1,26 @@
+
+[project]
+name = "jinja2static"
+version = "0.0.1"
+authors = [
+    { name = "Michael Airola", email = "me@michaelairola.com" }
+]
+description = "A simple static file generator based off of the Jinja templating language."
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+dependencies = [
+    "Jinja2>=3.1.6"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+jinja2static = "jinja2static:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
