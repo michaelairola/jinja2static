@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import jinja2
 from jinja2 import meta, FileSystemLoader, Environment
@@ -10,7 +11,7 @@ from .config import Config
 logger = logging.getLogger(__name__)
 
 
-def find_all_subtemplates(config: Config, template_name):
+def find_all_subtemplates(config: Config, template_filepath: Path):
     """
     Recursively finds all templates referenced by the given template.
     
@@ -18,10 +19,10 @@ def find_all_subtemplates(config: Config, template_name):
     :param template_name: The name of the starting template.
     :return: A set of all referenced template names.
     """
+    template_name = str(template_filepath.relative_to(config.templates))
     env = Environment(loader=FileSystemLoader(config.templates))
     found_templates = set()
     unprocessed_templates = {template_name}
-
     while unprocessed_templates:
         current_template_name = unprocessed_templates.pop()
         if current_template_name in found_templates:

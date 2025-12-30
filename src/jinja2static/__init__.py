@@ -7,6 +7,7 @@ from .files import build
 from .config import Config
 from .server import server
 from .logger import configure_logging
+from .data import inject_data_function
 
 logger = logging.getLogger(__name__)
 

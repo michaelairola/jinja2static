@@ -1,21 +1,26 @@
 from pathlib import Path
 from dataclasses import dataclass, field
 import logging
+import importlib
+import sys
 try:
     import tomllib
 except ImportError:
     # Python < 3.11
     import tomli as tomllib
 
+from .data import load_data_module
+
 logger = logging.getLogger(__name__)
 
 @dataclass 
 class Config:
-    templates: Path = field(default=Path("./templates"))
-    static: Path = field(default=Path("./static"))
-    dist: Path = field(default=Path("./dist"))
-    pages: list[Path] = field(default_factory=lambda:["index.html"])
-
+    project_path: Path = field(default=Path.cwd())
+    templates: Path = field(default=Path.cwd() / Path("templates"))
+    assets: Path = field(default=Path.cwd() / Path("assets"))
+    dist: Path = field(default=Path.cwd() / Path("dist"))
+    data: Path = field(default=Path.cwd() / Path("data.py"))
+    
     @classmethod
     def from_(cls, file_path_str: str | None = None):
         logger.debug(f"Configuring project with '{file_path_str}'")
@@ -25,11 +30,11 @@ class Config:
             return None
         if file_path.is_dir():
             logger.debug(f"Filepath '{file_path}' is a directory.")
-            dir_path = file_path
+            project_path = file_path
             pyproject_path = file_path / "pyproject.toml"
         else:
             logger.debug(f"Filepath '{file_path}' is a configuration file.")
-            dir_path = file_path.parent
+            project_path = file_path.parent
             pyproject_path = file_path
 
         pyproject_data = {}
@@ -44,8 +49,17 @@ class Config:
         config_data = pyproject_data.get("tools", {}).get("jinja2static", {})
         dataclass_fields = [ k for k in cls.__dataclass_fields__.keys() ]
         config_data = {
-            k: dir_path / Path(v) if isinstance(v, str) else v for k, v in config_data.items()
+            k: project_path / Path(v) #if isinstance(v, str) else v 
+            for k, v in config_data.items()
             if k in dataclass_fields
         }
-        return cls(**config_data)
-
+        config = cls(project_path=project_path, **config_data)
+        load_data_module(config)
+        return config
+    
+    @property 
+    def pages(self) -> list[str]:  
+        return [
+            self.project_path / p for p in Path(self.templates).rglob('*')
+            if p.is_file() and not p.name.startswith("_")
+        ]

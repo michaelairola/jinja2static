@@ -9,11 +9,14 @@ from asyncio import (
     sleep,
     start_server,
 )
+import logging
 import traceback
 import mimetypes
 
 from .config import Config
 from .files import file_watcher
+
+logger = logging.getLogger(__name__)
 
 async def receive_http_get_request(reader: StreamReader):
     request_data = b""
@@ -31,19 +34,21 @@ async def receive_http_get_request(reader: StreamReader):
     return method, uri
 
 
-def read_file(config: Config, file_path: Path) -> tuple[str, str]:
+def read_file(config: Config, file_path: Path) -> tuple[bytes, str]:
     assert file_path.is_relative_to(config.dist.resolve()), (
         f"File '{file_path}' is not located in distribution directory '{config.dist}'"
     )
-    with open(file_path, "r") as file:
-        file_data = file.read()
+    logger.debug(f"reading file {file_path}")
     mime_type, _ = mimetypes.guess_type(file_path.name)
+    with open(file_path, "rb" if mime_type == 'font/woff2' else "r") as file:
+        file_data = file.read()
+    file_data = file_data.encode("utf-8") if mime_type != 'font/woff2' else file_data 
     return file_data, mime_type
 
 
 async def send_http_response(
     writer: StreamWriter,
-    response_body: str,
+    response_body: bytes,
     status: int = 200,
     content_type: str = "text/plain",
 ):
@@ -53,8 +58,8 @@ async def send_http_response(
         f"Content-Length: {len(response_body)}\r\n"
         f"\r\n"
     )
-    response = response_header + response_body
-    writer.write(response.encode("utf-8"))
+    writer.write(response_header.encode("utf-8"))
+    writer.write(response_body)
     await writer.drain()
 
 def configure_requestor(config: Config):
@@ -80,13 +85,13 @@ def configure_requestor(config: Config):
             await send_http_response(writer, response_body, content_type=mime_type)
         except AssertionError as e:
             response_body = ",".join(e.args)
-            await send_http_response(writer, response_body, status=400)
+            await send_http_response(writer, response_body.encode("utf-8"), status=400)
         except Exception as e:
             response_body = "\n".join(
                 ["EXCEPTION:", *e.args, "-" * 40, traceback.format_exc()]
             )
-            print(response_body)
-            await send_http_response(writer, response_body, status=500)
+            logger.info(response_body)
+            await send_http_response(writer, response_body.encode("utf-8"), status=500)
         finally:
             writer.close()
             await writer.wait_closed()
