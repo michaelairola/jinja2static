@@ -14,9 +14,10 @@ import traceback
 import mimetypes
 
 from .config import Config
-from .files import file_watcher
+from .watcher import file_watcher
 
 logger = logging.getLogger(__name__)
+
 
 async def receive_http_get_request(reader: StreamReader):
     request_data = b""
@@ -40,9 +41,9 @@ def read_file(config: Config, file_path: Path) -> tuple[bytes, str]:
     )
     logger.debug(f"reading file {file_path}")
     mime_type, _ = mimetypes.guess_type(file_path.name)
-    with open(file_path, "rb" if mime_type == 'font/woff2' else "r") as file:
+    with open(file_path, "rb" if mime_type == "font/woff2" else "r") as file:
         file_data = file.read()
-    file_data = file_data.encode("utf-8") if mime_type != 'font/woff2' else file_data 
+    file_data = file_data.encode("utf-8") if mime_type != "font/woff2" else file_data
     return file_data, mime_type
 
 
@@ -61,6 +62,7 @@ async def send_http_response(
     writer.write(response_header.encode("utf-8"))
     writer.write(response_body)
     await writer.drain()
+
 
 def configure_requestor(config: Config):
     async def handle_request(reader: StreamReader, writer: StreamWriter):
@@ -95,6 +97,7 @@ def configure_requestor(config: Config):
         finally:
             writer.close()
             await writer.wait_closed()
+
     return handle_request
 
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import logging 
+import logging
 import importlib
 import sys
-from typing import TYPE_CHECKING 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .config import Config
@@ -12,11 +12,15 @@ logger = logging.getLogger(__name__)
 
 data_functions = []
 
+
 def inject_data_function(func):
     data_functions.append(func)
+
     def wrapper(config):
         func(*args, **kwargs)
+
     return wrapper
+
 
 def load_data_module(config: Config):
     if config.data.is_file():

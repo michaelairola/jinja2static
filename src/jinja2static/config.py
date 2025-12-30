@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import logging
 import importlib
 import sys
+
 try:
     import tomllib
 except ImportError:
@@ -13,14 +14,15 @@ from .data import load_data_module
 
 logger = logging.getLogger(__name__)
 
-@dataclass 
+
+@dataclass
 class Config:
     project_path: Path = field()
     templates: Path = field()
     assets: Path = field()
     dist: Path = field()
     data: Path = field()
-    
+
     @classmethod
     def from_(cls, file_path_str: str | None = None):
         logger.debug(f"Configuring project with '{file_path_str}'")
@@ -42,7 +44,9 @@ class Config:
             with open(pyproject_path, "rb") as f:
                 pyproject_data = tomllib.load(f)
         except FileNotFoundError:
-            logger.debug(f"No pyproject.toml file found at {file_path}. Using default values.")
+            logger.debug(
+                f"No pyproject.toml file found at {file_path}. Using default values."
+            )
         except tomllib.TOMLDecodeError as e:
             logger.error(f"Unable to decoding TOML file: {e}")
             return None
@@ -54,19 +58,20 @@ class Config:
         }
         config_data = pyproject_data.get("tools", {}).get("jinja2static", {})
         config_data = {
-            k: project_path / Path(v) 
+            k: project_path / Path(v)
             for k, v in config_data.items()
-            if k in [ k for k in cls.__dataclass_fields__.keys() ]
+            if k in [k for k in cls.__dataclass_fields__.keys()]
         }
-        kwargs = { **default_config_data, **config_data }
+        kwargs = {**default_config_data, **config_data}
         logger.debug(f"Config data loaded: {kwargs}")
         config = cls(project_path=project_path, **kwargs)
         load_data_module(config)
         return config
-    
-    @property 
-    def pages(self) -> list[str]:  
+
+    @property
+    def pages(self) -> list[str]:
         return [
-            p for p in Path(self.templates).rglob('*')
+            p
+            for p in Path(self.templates).rglob("*")
             if p.is_file() and not p.name.startswith("_")
         ]
