@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 @dataclass 
 class Config:
-    project_path: Path = field(default=Path.cwd())
-    templates: Path = field(default=Path.cwd() / Path("templates"))
-    assets: Path = field(default=Path.cwd() / Path("assets"))
-    dist: Path = field(default=Path.cwd() / Path("dist"))
-    data: Path = field(default=Path.cwd() / Path("data.py"))
+    project_path: Path = field()
+    templates: Path = field()
+    assets: Path = field()
+    dist: Path = field()
+    data: Path = field()
     
     @classmethod
     def from_(cls, file_path_str: str | None = None):
@@ -46,20 +46,27 @@ class Config:
         except tomllib.TOMLDecodeError as e:
             logger.error(f"Unable to decoding TOML file: {e}")
             return None
-        config_data = pyproject_data.get("tools", {}).get("jinja2static", {})
-        dataclass_fields = [ k for k in cls.__dataclass_fields__.keys() ]
-        config_data = {
-            k: project_path / Path(v) #if isinstance(v, str) else v 
-            for k, v in config_data.items()
-            if k in dataclass_fields
+        default_config_data = {
+            "templates": project_path / "templates",
+            "assets": project_path / "assets",
+            "dist": project_path / "dist",
+            "data": project_path / "data.py",
         }
-        config = cls(project_path=project_path, **config_data)
+        config_data = pyproject_data.get("tools", {}).get("jinja2static", {})
+        config_data = {
+            k: project_path / Path(v) 
+            for k, v in config_data.items()
+            if k in [ k for k in cls.__dataclass_fields__.keys() ]
+        }
+        kwargs = { **default_config_data, **config_data }
+        logger.debug(f"Config data loaded: {kwargs}")
+        config = cls(project_path=project_path, **kwargs)
         load_data_module(config)
         return config
     
     @property 
     def pages(self) -> list[str]:  
         return [
-            self.project_path / p for p in Path(self.templates).rglob('*')
+            p for p in Path(self.templates).rglob('*')
             if p.is_file() and not p.name.startswith("_")
         ]

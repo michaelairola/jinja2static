@@ -24,10 +24,12 @@ def load_data_module(config: Config):
         # TODO: make this a uuid?
         module_name = "jinja2static_data"
         # Create a module specification
-        spec = importlib.util.spec_from_file_location(module_name, "data.py")
+        spec = importlib.util.spec_from_file_location(module_name, config.data)
         # Create a new module based on the spec
         module = importlib.util.module_from_spec(spec)
         # Register the module in sysmodule.modules (optional, but good practice)
         sys.modules[module_name] = module
         # Execute the module's code
         spec.loader.exec_module(module)
+    else:
+        logger.debug(f"No data file '{config.data}' found.")

@@ -18,6 +18,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff"
+]
+
 [project.scripts]
 jinja2static = "jinja2static:main"
 

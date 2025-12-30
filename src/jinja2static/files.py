@@ -24,7 +24,6 @@ def rm_file_if_exists(file_path: Path):
             os.remove(file_path)
 
 def build_page(config: Config, filepath: Path) -> bool:
-    logger.debug(f"Building '{filepath}'...")
     return_status = True
     config.dist.mkdir(parents=True, exist_ok=True)
     RELATIVE_TO_TEMPLATE_PATH = filepath.relative_to(config.templates)
@@ -38,7 +37,7 @@ def build_page(config: Config, filepath: Path) -> bool:
         except Exception as e:
             logging.error(f"Error running data function '{data_func.__name__}': {e}")
     try:
-        logger.debug(f"rendering {filepath} with {data=}")
+        logger.debug(f"Building '{filepath}' with {data=}")
         rendered_file = Environment(loader=FileSystemLoader(config.templates))\
             .get_template(str(RELATIVE_TO_TEMPLATE_PATH))\
             .render(
@@ -81,8 +80,9 @@ def build(config: Config | None, verbose: bool=False) -> bool:
     rm_file_if_exists(config.dist)
     logger.info("Building...")
     copy_static_dir(config)
-    if build_pages(config):
-        logger.info("Successfully built.")
+    if not build_pages(config):
+        return False
+    logger.info("Successfully built.")
     return True
 
 
