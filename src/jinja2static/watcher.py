@@ -54,7 +54,7 @@ def find_all_subtemplates(config: Config, template_filepath: Path):
 
         except jinja2.exceptions.TemplateSyntaxError as e:
             logger.error(f"Unable to process template: {e}")
-            # Handle cases where a referenced template doesn't exist
+            continue
         except jinja2.exceptions.TemplateNotFound:
             logger.warning(f"Referenced template '{current_template_name}' not found.")
             continue
@@ -84,12 +84,8 @@ def watch_for_file_changes(func):
             if current_modified != last_modified:
                 logger.info(f"File '{file_path}' has changed...")
                 func(file_path, *args, **kwargs)
-                # logger.info(
-                #     f"Rebuilt '{file_path}' @ {datetime.fromtimestamp(current_modified)}"
-                # )
                 last_modified = current_modified
             await sleep(1)
-
     return wrapper
 
 

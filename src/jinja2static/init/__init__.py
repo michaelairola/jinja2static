@@ -22,7 +22,6 @@ def initialize_project(file_path: Path):
 
     logger.info(f"Creating '{pyproject_file_path}'")
     shutil.copy(pyproject, pyproject_file_path)    
-    # logger.info("going to copy files over now...")
     logger.info(f"Creating '{config.assets}'")
     shutil.copytree(assets, config.assets)
     logger.info(f"Creating '{config.templates}'")
