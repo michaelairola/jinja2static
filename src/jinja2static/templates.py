@@ -19,8 +19,6 @@ logger = logging.getLogger(__name__)
 def build_page(config: Config, filepath: Path) -> bool:
     return_status = True
     config.dist.mkdir(parents=True, exist_ok=True)
-    RELATIVE_TO_TEMPLATE_PATH = filepath.relative_to(config.templates)
-    DST_FILE_PATH = config.dist / RELATIVE_TO_TEMPLATE_PATH
     data = {}
     for data_func in data_functions:
         try:
@@ -32,7 +30,7 @@ def build_page(config: Config, filepath: Path) -> bool:
         logger.debug(f"Building '{filepath}' with {data=}")
         rendered_file = (
             Environment(loader=FileSystemLoader(config.templates))
-            .get_template(str(RELATIVE_TO_TEMPLATE_PATH))
+            .get_template(str(filepath))
             .render(config=config, filepath=filepath, **data)
         )
     except UndefinedError as e:
@@ -45,6 +43,7 @@ def build_page(config: Config, filepath: Path) -> bool:
         logger.error(f"Unable to render '{filepath}'")
         rendered_file = rendered_file.replace("\n", "<br/>")
         return_status = False
+    DST_FILE_PATH = config.dist / filepath
     DST_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(DST_FILE_PATH, "w") as f:
         f.write(rendered_file)

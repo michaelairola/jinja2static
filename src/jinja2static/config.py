@@ -71,7 +71,7 @@ class Config:
     @property
     def pages(self) -> list[str]:
         return [
-            p
+            p.relative_to(self.templates)
             for p in Path(self.templates).rglob("*")
             if p.is_file() and not p.name.startswith("_")
         ]

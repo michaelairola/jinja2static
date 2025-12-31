@@ -6,6 +6,7 @@ from pathlib import Path
 from collections import defaultdict
 from asyncio import create_task, sleep
 from asyncio.exceptions import CancelledError
+import time
 
 import jinja2
 from jinja2 import meta, FileSystemLoader, Environment
@@ -25,7 +26,7 @@ def find_all_subtemplates(config: Config, template_filepath: Path):
     :param template_name: The name of the starting template.
     :return: A set of all referenced template names.
     """
-    template_name = str(template_filepath.relative_to(config.templates))
+    template_name = str(template_filepath)
     env = Environment(loader=FileSystemLoader(config.templates))
     found_templates = set()
     unprocessed_templates = {template_name}
@@ -90,22 +91,27 @@ def watch_for_file_changes(func):
 
 
 @watch_for_file_changes
-def detect_changes_build_index(file_path, config, graph):
+def detect_template_changes_build_index(file_path, config, graph):
+    file_path = file_path.relative_to(config.templates)
+    start_time = time.perf_counter()
+    files_to_rebuild = graph.get(file_path.name, [])
     if file_path in config.pages:
+        files_to_rebuild.append(file_path)
+    logger.info(f"Rebuilding {[ str(file) for file in files_to_rebuild ]}...")
+    for file_path in files_to_rebuild:
         build_page(config, file_path)
-    parent_files = graph.get(file_path.name, [])
-    for parent_file in parent_files:
-        build_page(config, parent_file)
+    end_time = time.perf_counter()
+    logger.info(f"Rebuilt in {(end_time - start_time):.4f} seconds")
 
 
 @watch_for_file_changes
 def detect_changes_copy_asset(file_path, config):
-    copy_asset_file(config, file_path)
+    copy_asset_file(config, file_path.relative_to(config.assets))
 
 
 def file_watcher(config: Config):
     graph = dependency_graph(config)
     for file_path in config.templates.rglob("*"):
-        create_task(detect_changes_build_index(file_path, config, graph))
+        create_task(detect_template_changes_build_index(file_path, config, graph))
     for file_path in config.assets.rglob("*"):
         create_task(detect_changes_copy_asset(file_path, config))
