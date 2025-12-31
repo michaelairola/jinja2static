@@ -1,0 +1,4 @@
+[tools.jinja2static]
+templates="templates"
+assets="assets"
+dist="dist"

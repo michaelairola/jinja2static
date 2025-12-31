@@ -2,8 +2,8 @@ import argparse
 from pathlib import Path
 from asyncio import run
 import logging
+import shutil
 
-from .files import rm_file_if_exists
 from .config import Config
 from .assets import copy_asset_dir
 from .config import Config
@@ -11,6 +11,7 @@ from .server import server
 from .logger import configure_logging
 from .data import inject_data_function
 from .templates import build_pages
+from .init import initialize_project
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,9 @@ logger = logging.getLogger(__name__)
 def build(config: Config | None) -> bool:
     if not config:
         return False
-    rm_file_if_exists(config.dist)
+    if config.dist.exists():
+        logger.debug(f"Removing '{config.dist}'")
+        shutil.rmtree(config.dist)
     logger.info("Building...")
     copy_asset_dir(config)
     if not build_pages(config):
@@ -42,7 +45,7 @@ def run_dev_server(args):
 
 def initialize(args):
     configure_logging(args.verbose)
-    logger.warning("Sorry, this has not been created yet.")
+    initialize_project(args.project_file_path)
 
 
 def main():

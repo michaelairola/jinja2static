@@ -6,7 +6,6 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from jinja2.exceptions import UndefinedError
 
 from pathlib import Path
-from .files import rm_file_if_exists
 from .data import data_functions
 
 from typing import TYPE_CHECKING
@@ -22,7 +21,6 @@ def build_page(config: Config, filepath: Path) -> bool:
     config.dist.mkdir(parents=True, exist_ok=True)
     RELATIVE_TO_TEMPLATE_PATH = filepath.relative_to(config.templates)
     DST_FILE_PATH = config.dist / RELATIVE_TO_TEMPLATE_PATH
-    rm_file_if_exists(DST_FILE_PATH)
     data = {}
     for data_func in data_functions:
         try:
