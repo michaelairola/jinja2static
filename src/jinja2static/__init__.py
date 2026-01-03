@@ -9,7 +9,6 @@ from .assets import copy_asset_dir
 from .config import Config
 from .server import server
 from .logger import configure_logging
-from .data import inject_data_function
 from .templates import build_pages
 from .init import initialize_project
 
