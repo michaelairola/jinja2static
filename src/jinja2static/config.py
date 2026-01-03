@@ -70,7 +70,7 @@ class Config:
         for page in config.pages:
             config.update_dependency_graph(page)
         return config
-    
+
     def __post_init__(self):
         self.data_module = DataModule(config=self, module_path=self.data)
 
@@ -83,9 +83,10 @@ class Config:
         ]
 
     _parent_to_child_graph = {}
+
     def update_dependency_graph(self, file_path: Path):
         self._parent_to_child_graph[file_path] = find_all_subtemplates(self, file_path)
-    
+
     @property
     def dependency_graph(self):
         child_to_parent = defaultdict(set)

@@ -17,6 +17,7 @@ from .config import Config
 
 logger = logging.getLogger(__name__)
 
+
 def watch_for_file_changes(func):
     @wraps(func)
     async def wrapper(file_path, *args, **kwargs):
@@ -28,6 +29,7 @@ def watch_for_file_changes(func):
                 func(file_path, *args, **kwargs)
                 last_modified = current_modified
             await sleep(1)
+
     return wrapper
 
 
@@ -39,7 +41,7 @@ def detect_template_changes_build_index(file_path, config):
     files_to_rebuild = config.get_dependencies(file_path)
     if file_path in config.pages:
         files_to_rebuild.add(file_path)
-    logger.info(f"Rebuilding {[ str(file) for file in files_to_rebuild ]}...")
+    logger.info(f"Rebuilding {[str(file) for file in files_to_rebuild]}...")
     for file_path in files_to_rebuild:
         build_page(config, file_path)
     end_time = time.perf_counter()

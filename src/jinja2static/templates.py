@@ -48,6 +48,7 @@ def build_page(config: Config, filepath: Path) -> bool:
 def build_pages(config: Config) -> bool:
     return all(build_page(config, page) for page in config.pages)
 
+
 def find_all_subtemplates(config: Config, template_filepath: Path):
     """
     Recursively finds all templates referenced by the given template.

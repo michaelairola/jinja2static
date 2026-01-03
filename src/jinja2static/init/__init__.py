@@ -8,8 +8,9 @@ from jinja2static.logger import configure_logging
 
 logger = logging.getLogger(__name__)
 
+
 def initialize_project(file_path: Path):
-    INIT_DIR = resources.files("jinja2static") / "init" 
+    INIT_DIR = resources.files("jinja2static") / "init"
     templates = INIT_DIR / "templates"
     assets = INIT_DIR / "assets"
     pyproject = INIT_DIR / "pyproject.toml"
@@ -21,7 +22,7 @@ def initialize_project(file_path: Path):
         return
 
     logger.info(f"Creating '{pyproject_file_path}'")
-    shutil.copy(pyproject, pyproject_file_path)    
+    shutil.copy(pyproject, pyproject_file_path)
     logger.info(f"Creating '{config.assets}'")
     shutil.copytree(assets, config.assets)
     logger.info(f"Creating '{config.templates}'")
