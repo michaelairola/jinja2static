@@ -2,7 +2,7 @@ from __future__ import annotations
 import traceback
 import logging
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader
 from jinja2.exceptions import UndefinedError
 from jinja2 import meta, FileSystemLoader, Environment
 

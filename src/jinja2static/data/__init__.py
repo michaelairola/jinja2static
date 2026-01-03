@@ -95,7 +95,6 @@ class DataModule:
                 except Exception as e:
                     logger.error(f"{e}")
                     logger.info(traceback.format_exc())
-                    pass
         return self._global_data
 
     def file_data(self, file_path: Path):
@@ -109,7 +108,6 @@ class DataModule:
             except Exception as e:
                 logger.error(f"{e}")
                 logger.info(traceback.format_exc())
-                pass
         return per_file_data
 
     @property

@@ -4,7 +4,6 @@ import logging
 import shutil
 
 from jinja2static.config import Config
-from jinja2static.logger import configure_logging
 
 logger = logging.getLogger(__name__)
 
