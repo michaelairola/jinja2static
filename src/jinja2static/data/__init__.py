@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-import logging
-from typing import TYPE_CHECKING
-import inspect
 import importlib
-import traceback
+import inspect
+import logging
 import sys
-import yaml
-from enum import Enum, auto
+import traceback
 from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import TYPE_CHECKING
+
+import yaml
 
 if TYPE_CHECKING:
     from pathlib import Path
+
     from .config import Config
 
 logger = logging.getLogger(__name__)
@@ -37,9 +39,7 @@ def per_page_data(func):
 def load_python_module(file_path: Path):
     module_name = str(file_path).replace("/", ".").removesuffix(".py")
     logger.debug(f"Getting module data from '{file_path}'")
-    spec = importlib.util.spec_from_file_location(
-        module_name, file_path
-    )
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
     if not spec or not spec.loader:
         logger.warning(f"Could not find module spec for '{module_name}'")
         return None
@@ -53,7 +53,7 @@ def load_python_module(file_path: Path):
 
 
 def get_callback_functions(data_module: DataModule):
-    data_functions = {JinjaDataFunction.GLOBAL: [], JinjaDataFunction.PER_PAGE: []}    
+    data_functions = {JinjaDataFunction.GLOBAL: [], JinjaDataFunction.PER_PAGE: []}
     file_path = data_module.python_module_file_path
     if not file_path:
         return data_functions
@@ -77,6 +77,7 @@ class DataModule:
     module_path: Path = field()
 
     _functions = {}
+
     @property
     def functions(self):
         if not self._functions:
@@ -87,6 +88,7 @@ class DataModule:
         self._functions = get_callback_functions(self)
 
     _yaml_data = {}
+
     @property
     def yaml_data(self):
         if not self._yaml_data:
@@ -97,22 +99,23 @@ class DataModule:
         if not self.yaml_file_path:
             return False
         logger.debug(f"Getting yaml data from '{self.yaml_file_path}'")
-        with open(self.yaml_file_path, 'r') as stream:
+        with open(self.yaml_file_path, "r") as stream:
             try:
                 self._yaml_data = yaml.safe_load(stream)
                 return True
             except yaml.YAMLError as exc:
                 logger.error(f"YAML file {self.yaml_file_path}'")
                 logger.info(exc)
-                return False 
+                return False
 
     _global_data = {}
+
     @property
     def global_data(self):
         if not self._global_data:
             self.update_module_data()
         return self._global_data
-    
+
     def update_module_data(self):
         self.update_functions()
         self._global_data = {}
@@ -126,7 +129,6 @@ class DataModule:
                 logger.error(f"{e}")
                 logger.info(traceback.format_exc())
 
-
     def file_data(self, file_path: Path):
         per_file_data = {}
         for f in self.functions[JinjaDataFunction.PER_PAGE]:
@@ -139,8 +141,8 @@ class DataModule:
                 logger.error(f"{e}")
                 logger.info(traceback.format_exc())
         return per_file_data
-    
-    @property 
+
+    @property
     def python_module_file_path(self):
         file_path_py = self.module_path.with_suffix(".py")
         if file_path_py.exists():
@@ -148,7 +150,7 @@ class DataModule:
         if self.module_path.exists():
             return file_path
         logger.debug(f"No data module file found for '{self.module_path}'")
-        return None 
+        return None
 
     @property
     def yaml_file_path(self):
@@ -161,7 +163,7 @@ class DataModule:
         ]
         for file_path in possible_yamls:
             if file_path.exists():
-                return file_path    
+                return file_path
         logger.debug(f"No yaml file found for '{self.module_path}'")
         return None
 

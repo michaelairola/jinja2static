@@ -1,6 +1,6 @@
 import logging
-from logging import Formatter
 import sys
+from logging import Formatter
 
 bold_yellow = "\x1b[33;1m"
 bold_red = "\x1b[31;1m"

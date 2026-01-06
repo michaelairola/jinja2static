@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import shutil
+
 import logging
+import shutil
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .config import Config

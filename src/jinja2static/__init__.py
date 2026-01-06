@@ -1,16 +1,15 @@
 import argparse
-from pathlib import Path
-from asyncio import run
 import logging
 import shutil
+from asyncio import run
+from pathlib import Path
 
-from .config import Config
 from .assets import copy_asset_dir
 from .config import Config
-from .server import server
-from .logger import configure_logging
-from .templates import build_pages
 from .init import initialize_project
+from .logger import configure_logging
+from .server import server
+from .templates import build_pages
 
 logger = logging.getLogger(__name__)
 

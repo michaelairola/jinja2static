@@ -1,14 +1,16 @@
 from __future__ import annotations
-import traceback
+
 import logging
-
-from jinja2 import Environment, FileSystemLoader, meta, Environment
-from jinja2.exceptions import UndefinedError, TemplateSyntaxError, TemplateNotFound
-
+import traceback
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from jinja2 import Environment, FileSystemLoader, meta
+from jinja2.exceptions import (TemplateNotFound, TemplateSyntaxError,
+                               UndefinedError)
+
 # from .data import data_functions
 
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .config import Config

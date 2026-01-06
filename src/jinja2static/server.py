@@ -1,14 +1,9 @@
-from pathlib import Path
-from asyncio import (
-    CancelledError,
-    StreamReader,
-    StreamWriter,
-    start_server,
-)
-from asyncio.exceptions import CancelledError
 import logging
-import traceback
 import mimetypes
+import traceback
+from asyncio import CancelledError, StreamReader, StreamWriter, start_server
+from asyncio.exceptions import CancelledError
+from pathlib import Path
 
 from .config import Config
 from .watcher import file_watcher

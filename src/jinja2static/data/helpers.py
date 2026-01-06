@@ -2,8 +2,8 @@
 File for helper functions that can be used to inject dynamic data
 """
 
-import subprocess
 import logging
+import subprocess
 from datetime import datetime
 from pathlib import Path
 

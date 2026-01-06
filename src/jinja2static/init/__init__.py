@@ -1,7 +1,7 @@
 import importlib.resources as resources
-from pathlib import Path
 import logging
 import shutil
+from pathlib import Path
 
 from jinja2static.config import Config
 
