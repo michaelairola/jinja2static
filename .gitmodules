@@ -1,6 +1,6 @@
 [submodule "tests/data/resume"]
-	path = tests/data/resume
+	path = tests/test_repos/resume
 	url = https://github.com/michaelairola/resume.git
 [submodule "tests/data/blog"]
-	path = tests/data/blog
+	path = tests/test_repos/blog
 	url = https://github.com/michaelairola/blog.git
