@@ -54,7 +54,7 @@ class Config:
             "templates": project_path / "templates",
             "assets": project_path / "assets",
             "dist": project_path / "dist",
-            "data": project_path / "data.py",
+            "data": project_path / "data",
         }
         config_data = pyproject_data.get("tools", {}).get("jinja2static", {})
         config_data = {

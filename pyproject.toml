@@ -1,7 +1,7 @@
 
 [project]
 name = "jinja2static"
-version = "0.3.0"
+version = "0.4.0"
 authors = [
     { name = "Michael Airola", email = "me@michaelairola.com" }
 ]
@@ -10,7 +10,8 @@ readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.10"
 dependencies = [
-    "Jinja2>=3.1.6"
+    "Jinja2>=3.1.6",
+    "PyYaml>=6.0.3"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -21,7 +22,9 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "ruff"
+    "ruff",
+    "twine",
+    "build"
 ]
 
 [project.scripts]

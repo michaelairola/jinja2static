@@ -2,9 +2,8 @@ from __future__ import annotations
 import traceback
 import logging
 
-from jinja2 import Environment, FileSystemLoader
-from jinja2.exceptions import UndefinedError
-from jinja2 import meta, FileSystemLoader, Environment
+from jinja2 import Environment, FileSystemLoader, meta, Environment
+from jinja2.exceptions import UndefinedError, TemplateSyntaxError, TemplateNotFound
 
 from pathlib import Path
 # from .data import data_functions
@@ -29,7 +28,7 @@ def build_page(config: Config, filepath: Path) -> bool:
             .render(config=config, filepath=filepath, **data)
         )
     except UndefinedError as e:
-        rendered_file = f"{e}. There is either an undefined variable in the template file, or a data load error occured."
+        rendered_file = f"Building '{filepath}': {e}"
         logger.error(rendered_file)
         return_status = False
     except Exception as e:
@@ -80,10 +79,10 @@ def find_all_subtemplates(config: Config, template_filepath: Path):
                 if ref is not None and ref not in found_templates:
                     unprocessed_templates.add(ref)
 
-        except jinja2.exceptions.TemplateSyntaxError as e:
+        except TemplateSyntaxError as e:
             logger.error(f"Unable to process template: {e}")
             continue
-        except jinja2.exceptions.TemplateNotFound:
+        except TemplateNotFound:
             logger.warning(f"Referenced template '{current_template_name}' not found.")
             continue
 

@@ -6,6 +6,7 @@ import inspect
 import importlib
 import traceback
 import sys
+import yaml
 from enum import Enum, auto
 from dataclasses import dataclass, field
 
@@ -33,30 +34,35 @@ def per_page_data(func):
     return func
 
 
-def get_callback_functions(data_module: DataModule):
-    data_functions = {JinjaDataFunction.GLOBAL: [], JinjaDataFunction.PER_PAGE: []}
+def load_python_module(file_path: Path):
+    module_name = str(file_path).replace("/", ".").removesuffix(".py")
+    logger.debug(f"Getting module data from '{file_path}'")
+    spec = importlib.util.spec_from_file_location(
+        module_name, file_path
+    )
+    if not spec or not spec.loader:
+        logger.warning(f"Could not find module spec for '{module_name}'")
+        return None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
     try:
-        if not data_module.module_path.exists():
-            if data_module.module_path == data_module.config.data:
-                logging.debug("No data detected. Building files without data...")
-                return data_functions
-            logger.warning(f"No module '{data_module.module_path}' found")
-        module_name = str(data_module.module_path).replace("/", ".")
-        logger.debug(f"Getting module '{module_name}' from '{data_module.module_path}'")
-        spec = importlib.util.spec_from_file_location(
-            module_name, data_module.module_path
-        )
-        if not spec or not spec.loader:
-            logger.warning(f"Could not find module spec for '{module_name}'")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = module
         spec.loader.exec_module(module)
-        all_functions = [
-            f for (f_name, f) in inspect.getmembers(module, inspect.isfunction)
-        ]
     except Exception as e:
         logger.error(f"importing dynamic module '{module_name}': {e}")
+    return module
+
+
+def get_callback_functions(data_module: DataModule):
+    data_functions = {JinjaDataFunction.GLOBAL: [], JinjaDataFunction.PER_PAGE: []}    
+    file_path = data_module.python_module_file_path
+    if not file_path:
         return data_functions
+    module = load_python_module(file_path)
+    if not module:
+        return data_functions
+    all_functions = [
+        f for (f_name, f) in inspect.getmembers(module, inspect.isfunction)
+    ]
     for function in all_functions:
         func_type = getattr(function, "jinja2static", None)
         if not func_type:
@@ -69,33 +75,57 @@ def get_callback_functions(data_module: DataModule):
 class DataModule:
     config: Config = field()
     module_path: Path = field()
-    # submodules: list[DataModule]
 
-    # def __post_init__(self):
-    #     pass
     _functions = {}
-
     @property
     def functions(self):
         if not self._functions:
-            self._functions = get_callback_functions(self)
+            self.update_functions()
         return self._functions
 
-    _global_data = {}
+    def update_functions(self):
+        self._functions = get_callback_functions(self)
 
+    _yaml_data = {}
+    @property
+    def yaml_data(self):
+        if not self._yaml_data:
+            self.update_yaml_data()
+        return self._yaml_data
+
+    def update_yaml_data(self) -> bool:
+        if not self.yaml_file_path:
+            return False
+        logger.debug(f"Getting yaml data from '{self.yaml_file_path}'")
+        with open(self.yaml_file_path, 'r') as stream:
+            try:
+                self._yaml_data = yaml.safe_load(stream)
+                return True
+            except yaml.YAMLError as exc:
+                logger.error(f"YAML file {self.yaml_file_path}'")
+                logger.info(exc)
+                return False 
+
+    _global_data = {}
     @property
     def global_data(self):
         if not self._global_data:
-            for f in self.functions[JinjaDataFunction.GLOBAL]:
-                try:
-                    self._global_data = {
-                        **self._global_data,
-                        **f(self._global_data, self.config),
-                    }
-                except Exception as e:
-                    logger.error(f"{e}")
-                    logger.info(traceback.format_exc())
+            self.update_module_data()
         return self._global_data
+    
+    def update_module_data(self):
+        self.update_functions()
+        self._global_data = {}
+        for f in self.functions[JinjaDataFunction.GLOBAL]:
+            try:
+                self._global_data = {
+                    **self._global_data,
+                    **f(self._global_data, self.config),
+                }
+            except Exception as e:
+                logger.error(f"{e}")
+                logger.info(traceback.format_exc())
+
 
     def file_data(self, file_path: Path):
         per_file_data = {}
@@ -109,6 +139,31 @@ class DataModule:
                 logger.error(f"{e}")
                 logger.info(traceback.format_exc())
         return per_file_data
+    
+    @property 
+    def python_module_file_path(self):
+        file_path_py = self.module_path.with_suffix(".py")
+        if file_path_py.exists():
+            return file_path_py
+        if self.module_path.exists():
+            return file_path
+        logger.debug(f"No data module file found for '{self.module_path}'")
+        return None 
+
+    @property
+    def yaml_file_path(self):
+        file_path = self.module_path
+        possible_yamls = [
+            file_path.with_suffix(".yaml"),
+            file_path.with_suffix(".yml"),
+            file_path / "__init__.yaml",
+            file_path / "__init__.yml",
+        ]
+        for file_path in possible_yamls:
+            if file_path.exists():
+                return file_path    
+        logger.debug(f"No yaml file found for '{self.module_path}'")
+        return None
 
     @property
     def relative_path(self):
@@ -120,4 +175,4 @@ class DataModule:
     def data_for(self, file_path: Path):
         if not self.contains(file_path):
             return {}
-        return {**self.global_data, **self.file_data(file_path)}
+        return {**self.yaml_data, **self.global_data, **self.file_data(file_path)}
