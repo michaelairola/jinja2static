@@ -24,7 +24,12 @@ class Formatter(Formatter):
 
 def configure_logging(verbose: bool = False):
     fmt = Formatter()
-    hdlr = logging.StreamHandler(sys.stdout)
-    hdlr.setFormatter(fmt)
-    logging.root.addHandler(hdlr)
+    stdout_hdlr = logging.StreamHandler(sys.stdout)
+    stdout_hdlr.setFormatter(fmt)
+    logging.root.addHandler(stdout_hdlr)
+
+    stderr_hdlr = logging.StreamHandler(sys.stderr)
+    stderr_hdlr.setLevel(logging.ERROR)
+    logging.root.addHandler(stderr_hdlr)
+
     logging.root.setLevel(logging.DEBUG if verbose else logging.INFO)
