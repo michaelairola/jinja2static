@@ -1,7 +1,8 @@
 import logging
 import mimetypes
 import traceback
-from asyncio import CancelledError, create_task, StreamReader, StreamWriter, start_server
+from asyncio import (CancelledError, StreamReader, StreamWriter, create_task,
+                     start_server)
 from pathlib import Path
 
 from .config import Config
@@ -98,9 +99,9 @@ async def http_server(port: int, config: Config | None):
             return
         handle_request = configure_requestor(config)
         server = await start_server(handle_request, "127.0.0.1", port)
-        logger.info(f"~~~~~~~~~~~~~~~~~{"~"*len(str(port))}")
+        logger.info(f"~~~~~~~~~~~~~~~~~{'~' * len(str(port))}")
         logger.info(f"Serving on port {port} ~")
-        logger.info(f"~~~~~~~~~~~~~~~~~{"~"*len(str(port))}")
+        logger.info(f"~~~~~~~~~~~~~~~~~{'~' * len(str(port))}")
         logger.info("")
         async with server:
             await server.serve_forever()

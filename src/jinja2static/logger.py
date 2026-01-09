@@ -1,12 +1,14 @@
 import logging
 import sys
-from logging import Formatter, Filter
+from logging import Filter, Formatter
 
 bold_yellow = "\x1b[33;1m"
 bold_red = "\x1b[31;1m"
 reset = "\x1b[0m"
 
 ERROR_FMT = Formatter(bold_red + "ERROR: %(msg)s" + reset)
+
+
 class Formatter(Formatter):
     default_formatter = Formatter("%(msg)s")
     FORMATTERS = {
@@ -20,9 +22,11 @@ class Formatter(Formatter):
         formatter = self.FORMATTERS.get(record.levelno, self.default_formatter)
         return formatter.format(record)
 
+
 class IgnoreStdErrIfATTY(Filter):
     def filter(self, record):
         return not (record.levelno == logging.ERROR and sys.stderr.isatty())
+
 
 def configure_logging(verbose: bool = False):
     fmt = Formatter()
