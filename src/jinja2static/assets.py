@@ -20,5 +20,5 @@ def copy_asset_file(config: Config, file_path: str):
     config.dist.mkdir(parents=True, exist_ok=True)
     src_file_path = config.assets / file_path
     dst_file_path = config.dist / file_path
-    logger.info(f"Copying '{src_file_path}' -> {dst_file_path}")
     shutil.copy(src_file_path, dst_file_path)
+    logger.info(f"Copied '{src_file_path.relative_to(config.project_path)}' -> {dst_file_path.relative_to(config.project_path)}")
