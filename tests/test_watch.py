@@ -1,68 +1,94 @@
 import os
-import subprocess
-import sys
-import time
 from pathlib import Path
+from asyncio import create_task, sleep, wait_for
+from typing import Any
+
+from watchfiles import Change, awatch
 
 import pytest
 from conftest import BLOG_PATH, RESUME_PATH
 
-from jinja2static import Config
+from jinja2static import Config, file_watcher
+from dataclasses import dataclass, field
 
+@dataclass
+class ChangeAssertion():
+    func: Any = field()
+    src_file_path: Path = field()
+    dst_file_changes: dict[Change, list[Path]] = field()
 
-def update_resume(config: Config) -> list[Path]:
-    index_file = RESUME_PATH / config.templates / "index.html"
-    index_file.touch(exist_ok=True)
-    index_css = RESUME_PATH / config.assets / "index.css"
-    index_css.touch(exist_ok=True)
-    data_file = RESUME_PATH / "data.yaml"
-    data_file.touch(exist_ok=True)
-    rando_file = RESUME_PATH / config.templates / "RANDO_FILE.html"
-    rando_file.touch()
-    time.sleep(0.5)
-    os.remove(rando_file)
-    return [index_file, index_css, data_file, rando_file, rando_file]
+    def run(self, config: Config):
+        return self.func(config, self.src_file_path)
 
+modified_and_changed = [ Change.modified, Change.added ]
 
-def update_blog(config: Config):
-    index_file = BLOG_PATH / config.templates / "index.html"
-    index_file.touch(exist_ok=True)
-    index_css = BLOG_PATH / config.assets / "index.css"
-    index_css.touch(exist_ok=True)
-    data_file = BLOG_PATH / "data.py"
-    data_file.touch(exist_ok=True)
-    return [index_file, index_css, data_file]
+async def wait_for_file_change(file_path, expected_change):
+    print("here we are...", file_path, expected_change)
+    if not file_path.exists():
+        if expected_change == Change.deleted: 
+            return
+        if expected_change == Change.added:
+            while True:
+                if file_path.exists():
+                    return
+                await sleep(.1)
+    async for changes in awatch(file_path):
+        for change, file_path in changes:
+            if change in modified_and_changed and expected_change in modified_and_changed:
+                return
+            if change == expected_change:
+                return
 
+def touch(file_path: Path):
+    return file_path.touch(exist_ok=True)
 
+def touch_template_file(config: Config, file_path: Path):
+    return touch(config.templates / file_path)
+
+def touch_asset_file(config: Config, file_path: Path):
+    return touch(config.assets / file_path)
+
+def touch_data_file(config: Config, file_path: Path):
+    return touch(config.project_path / file_path)
+
+def delete_template_file(config: Config, file_path: Path):
+    file_path = config.templates / file_path
+    if file_path.exists():
+        return os.remove(config.templates / file_path)
+
+RESUME_CHANGES = [
+    ChangeAssertion(touch_template_file, "index.html", { Change.modified: [ "index.html" ]}),
+    ChangeAssertion(touch_asset_file, "index.css", { Change.modified: [ "index.css" ]}),
+    ChangeAssertion(touch_data_file, "data.yaml", { Change.modified: [ "index.html" ]}),
+    ChangeAssertion(touch_template_file, "RANDO_FILE.html", { Change.added: [ "RANDO_FILE.html" ]}),
+    ChangeAssertion(delete_template_file, "RANDO_FILE.html", { Change.deleted: [ ]}),
+    # ChangeAssertion(delete_template_file, "RANDO_FILE.html", { Change.deleted: [ "RANDO_FILE.html" ]}),
+]
+BLOG_CHANGES = [
+    ChangeAssertion(touch_template_file, "_base.html", { Change.modified: [ "index.html", "about.html" ]}),
+    ChangeAssertion(touch_data_file, "data.py", { Change.modified: [ "index.html", "about.html", "posts/lorem_ipsum.html" ]}),
+]
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "test_type, project_file_path, update_files_fn",
-    [("RESUME", RESUME_PATH, update_resume), ("BLOG", BLOG_PATH, update_blog)],
-)
-def test_run_dev_server_resume(test_type, project_file_path, update_files_fn, logger):
-    logger.warning(f"DEV SERVER {test_type} TEST")
+    "test_type, project_file_path, project_changes", [
+    ("RESUME", RESUME_PATH, RESUME_CHANGES), 
+    ("BLOG", BLOG_PATH, BLOG_CHANGES),
+])
+async def test_run_dev_server_resume(test_type, project_file_path, project_changes, logger):
     config = Config.from_(project_file_path)
-    run_cmd = [sys.executable, "-m", "jinja2static", "watch", str(project_file_path)]
-    process = subprocess.Popen(
-        run_cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    time.sleep(1)
-    updated_files = update_files_fn(config)
-    time.sleep(1.5)
-    process.kill()
-    stdout_data, stderr_data = process.communicate()
-    stdout_str = stdout_data.decode("utf-8").strip()
-    print(stdout_str)
-    if stderr_data:
-        print(stderr_data.decode("utf-8").strip())
-        assert False
+    logger.warning(f"DEV SERVER {test_type} TEST")
+    
+    create_task(file_watcher(config))
 
-    for file in set(updated_files):
-        cnt_expected = updated_files.count(file)
-        cnt_actual = stdout_str.count(str(file))
-        assert cnt_expected == cnt_actual, (
-            f"No mention of '{str(file)}' found in stdout."
-            if cnt_expected == 1 and cnt_actual == 0
-            else f"'{str(file)}' expected {cnt_expected} times in stdout and {'only ' if cnt_actual else ''}showed {cnt_actual} time{'' if cnt_actual == 1 else 's'}"
-        )
+    for ca in project_changes:
+        for change, file_paths in ca.dst_file_changes.items():
+            for file_path in file_paths:
+                task = create_task(wait_for_file_change(config.dist / file_path, change))
+                await sleep(.1)
+                ca.run(config)
+                try:
+                    await wait_for(task, timeout=2)
+                except TimeoutError:
+                    assert False, f"file '{file_path}' did not get updated when {ca.func.__name__} was run on {ca.src_file_path} :("    
+    await sleep(.1)
