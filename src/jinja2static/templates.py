@@ -47,6 +47,7 @@ def build_page(config: Config, filepath: Path) -> bool:
 
 
 def build_pages(config: Config) -> bool:
+    logger.info(f"Building pages {[ str(page) for page in config.pages ]} from '{config.templates}'...")
     return all(build_page(config, page) for page in config.pages)
 
 

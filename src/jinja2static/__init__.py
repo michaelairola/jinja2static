@@ -1,6 +1,7 @@
 import argparse
 import logging
 import shutil
+import time
 from asyncio import run
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from .init import initialize_project
 from .logger import configure_logging
 from .server import server
 from .templates import build_pages
+from .watcher import file_watcher
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +22,13 @@ def build(config: Config | None) -> bool:
     if config.dist.exists():
         logger.debug(f"Removing '{config.dist}'")
         shutil.rmtree(config.dist)
+    start_time = time.perf_counter()
     logger.info("Building...")
     copy_asset_dir(config)
     if not build_pages(config):
         return False
-    logger.info("Successfully built.")
+    end_time = time.perf_counter()
+    logger.info(f"Successfully built in {(end_time - start_time):.4f} seconds.")
     return True
 
 
@@ -40,6 +44,10 @@ def run_dev_server(args):
     build(config)
     run(server(args.port, config))
 
+def run_watcher(args):
+    configure_logging(args.verbose)
+    config = Config.from_(args.project_file_path)
+    run(file_watcher(config))
 
 def initialize(args):
     configure_logging(args.verbose)
@@ -71,12 +79,18 @@ def main():
     )
     dev_server.set_defaults(func=run_dev_server)
 
+    watcher = subcommands.add_parser(
+        "watch",
+        help="Watches and recompiles src files (no server)"
+    )
+    watcher.set_defaults(func=run_watcher)
+
     init = subcommands.add_parser(
         "init", help="initializes a project be configured as a jinja2static project."
     )
     init.set_defaults(func=initialize)
 
-    for parser in [build, dev_server, init]:
+    for parser in [ build, dev_server, watcher, init ]:
         parser.add_argument(
             "-v",
             "--verbose",

@@ -1,7 +1,7 @@
 import logging
 import mimetypes
 import traceback
-from asyncio import CancelledError, StreamReader, StreamWriter, start_server
+from asyncio import CancelledError, create_task, StreamReader, StreamWriter, start_server
 from asyncio.exceptions import CancelledError
 from pathlib import Path
 
@@ -97,7 +97,7 @@ async def server(port: int, config: Config | None):
     try:
         if not config:
             return
-        file_watcher(config)
+        create_task(file_watcher(config))
         handle_request = configure_requestor(config)
         server = await start_server(handle_request, "127.0.0.1", port)
         logger.info(f"Serving on port {port}")

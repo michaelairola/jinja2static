@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from asyncio import create_task, sleep
+from asyncio import create_task, gather, sleep 
 from functools import wraps
 
 from .assets import copy_asset_file
@@ -68,15 +68,22 @@ def detect_changes_data_files(file_path, config, callback_fn):
     return x(file_path, config)
 
 
-def file_watcher(config: Config):
-    for file_path in config.templates.rglob("*"):
+async def file_watcher(config: Config):
+    logger.info(f"Watching for file changes in '{config.project_path}'...")
+    template_tasks = [
         create_task(detect_template_changes_build_index(file_path, config))
-    for file_path in config.assets.rglob("*"):
+        for file_path in config.templates.rglob("*")
+    ]
+    assets_tasks = [
         create_task(detect_changes_copy_asset(file_path, config))
-
+        for file_path in config.assets.rglob("*")
+    ]
     data_mod = config.data_module
     files = [data_mod.python_module_file_path, data_mod.yaml_file_path]
     callback_fns = [data_mod.update_module_data, data_mod.update_yaml_data]
-    for file_path, callback_fn in zip(files, callback_fns):
-        if file_path:
-            create_task(detect_changes_data_files(file_path, config, callback_fn))
+    data_tasks = [
+        create_task(detect_changes_data_files(file_path, config, callback_fn))
+        for file_path, callback_fn in zip(files, callback_fns)
+        if file_path
+    ]
+    await gather(*template_tasks, *assets_tasks, *data_tasks)
