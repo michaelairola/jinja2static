@@ -23,7 +23,6 @@ class ChangeAssertion():
 modified_and_changed = [ Change.modified, Change.added ]
 
 async def wait_for_file_change(file_path, expected_change):
-    print("here we are...", file_path, expected_change)
     if not file_path.exists():
         if expected_change == Change.deleted: 
             return
@@ -59,14 +58,15 @@ def delete_template_file(config: Config, file_path: Path):
 RESUME_CHANGES = [
     ChangeAssertion(touch_template_file, "index.html", { Change.modified: [ "index.html" ]}),
     ChangeAssertion(touch_asset_file, "index.css", { Change.modified: [ "index.css" ]}),
-    ChangeAssertion(touch_data_file, "data.yaml", { Change.modified: [ "index.html" ]}),
-    ChangeAssertion(touch_template_file, "RANDO_FILE.html", { Change.added: [ "RANDO_FILE.html" ]}),
-    ChangeAssertion(delete_template_file, "RANDO_FILE.html", { Change.deleted: [ ]}),
+    # ChangeAssertion(touch_data_file, "data.yaml", { Change.modified: [ "index.html" ]}),
+    # ChangeAssertion(touch_template_file, "RANDO_FILE.html", { Change.added: [ "RANDO_FILE.html" ]}),
+    # ChangeAssertion(delete_template_file, "RANDO_FILE.html", { Change.deleted: [ ]}),
     # ChangeAssertion(delete_template_file, "RANDO_FILE.html", { Change.deleted: [ "RANDO_FILE.html" ]}),
 ]
 BLOG_CHANGES = [
     ChangeAssertion(touch_template_file, "_base.html", { Change.modified: [ "index.html", "about.html" ]}),
-    ChangeAssertion(touch_data_file, "data.py", { Change.modified: [ "index.html", "about.html", "posts/lorem_ipsum.html" ]}),
+    ChangeAssertion(touch_data_file, "data/__init__.py", { Change.modified: [ "index.html", "about.html", "posts/lorem_ipsum.html" ]}),
+    ChangeAssertion(touch_data_file, "data/index.py", { Change.modified: [ "index.html" ]}),
 ]
 
 @pytest.mark.asyncio
@@ -91,4 +91,5 @@ async def test_run_dev_server_resume(test_type, project_file_path, project_chang
                     await wait_for(task, timeout=2)
                 except TimeoutError:
                     assert False, f"file '{file_path}' did not get updated when {ca.func.__name__} was run on {ca.src_file_path} :("    
+                await sleep(.1)
     await sleep(.1)

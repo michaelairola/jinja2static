@@ -56,18 +56,12 @@ def detect_changes_copy_asset(file_path, config):
     copy_asset_file(config, file_path.relative_to(config.assets))
 
 
-def detect_changes_data_files(file_path, config, callback_fn):
+def detect_changes_data_files(file_path, config):
     @watch_for_file_changes
     def x(file_path, config):
         start_time = time.perf_counter()
-        callback_fn()
-        effected_templates_dir = config.templates / config.data_module.relative_path
-        files_to_rebuild = list(effected_templates_dir.rglob("*"))
-        files_to_rebuild = [
-            page.relative_to(config.templates)
-            for page in files_to_rebuild
-            if page.relative_to(config.templates) in config.pages
-        ]
+        file_path = file_path.relative_to(config.data.absolute())
+        files_to_rebuild = config.data_module.update(file_path)
         logger.info(f"Rebuilding {[str(file) for file in files_to_rebuild]}...")
         for file_path in files_to_rebuild:
             build_page(config, file_path)
@@ -84,21 +78,15 @@ async def file_watcher(config: Config):
         create_task(detect_template_changes_build_index(config.templates, config))
     )
     tasks.append(create_task(detect_changes_copy_asset(config.assets, config)))
-    data_mod = config.data_module
-    pymod_path = data_mod.pymod_file_path
-    if pymod_path:
-        tasks.append(
-            create_task(
-                detect_changes_data_files(
-                    pymod_path, config, data_mod.update_module_data
-                )
-            )
-        )
-    yaml_path = data_mod.yaml_file_path
-    if yaml_path:
-        tasks.append(
-            create_task(
-                detect_changes_data_files(yaml_path, config, data_mod.update_yaml_data)
-            )
-        )
+    
+    if config.data.is_dir():
+        tasks.append(create_task(detect_changes_data_files(config.data, config)))
+    # else:
+    #     file_paths = [
+    #          config.data_module.pymod_file_path, config.data_module.yaml_file_path
+    #     ]
+    #     for file_path in file_paths:
+    #         if not file_path:
+    #             continue
+    #         tasks.append(create_task(detect_changes_data_files(file_path, config)))
     await gather(*tasks)

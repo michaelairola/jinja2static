@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum, auto
 from typing import TYPE_CHECKING
+import os
 
 import yaml
 
@@ -40,7 +41,7 @@ def per_page_data(func):
 def load_pymod(file_path: Path):
     suffix = ".__init__.py" if file_path.name == "__init__.py" else ".py"
     module_name = str(file_path).replace("/", ".").removesuffix(suffix)
-    logger.debug(f"Getting module '{module_name}' from '{file_path}'")
+    logger.debug(f"Loading module '{module_name}' from '{file_path}'")
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     if not spec or not spec.loader:
         logger.warning(f"Could not find module spec for '{module_name}'")
@@ -77,6 +78,26 @@ def get_callback_functions(data_module: DataModule):
 class DataModule:
     config: Config = field()
     file_path: Path = field()
+
+    submodules = []
+
+    def __post_init__(self):
+        if not self.pymod_file_path or self.file_path.is_file():
+            return
+        logger.debug(f"Getting subpaths for {self.file_path}")
+        subpaths = [
+            file_path for file_path in self.file_path.iterdir() 
+            if file_path.suffix == ".py" and
+            file_path != self.pymod_file_path and 
+            file_path != self.yaml_file_path and
+            file_path.name != "__pycache__"  # TODO: make this more robust
+
+        ]
+        logger.debug(f"Recursing through {[ path.name for path in subpaths]}")
+        self.submodules = [ 
+            DataModule(config=self.config, file_path=file_path)
+            for file_path in subpaths
+        ]
 
     _functions = {}
 
@@ -115,10 +136,10 @@ class DataModule:
     @property
     def global_data(self):
         if not self._global_data:
-            self.update_module_data()
+            self.update_pymod_data()
         return self._global_data
 
-    def update_module_data(self):
+    def update_pymod_data(self):
         self.update_functions()
         self._global_data = {}
         for f in self.functions[JinjaDataFunction.GLOBAL]:
@@ -154,7 +175,6 @@ class DataModule:
             file_path = file_path / "__init__.py"
             if file_path.exists():
                 return file_path
-        logger.debug(f"No data module file found for '{file_path}'")
         return None
 
     @property
@@ -169,17 +189,68 @@ class DataModule:
         for file_path in possible_yamls:
             if file_path.exists():
                 return file_path
-        logger.debug(f"No yaml file found for '{self.file_path}'")
         return None
+    
+    def is_in(self, file_path: Path):
+        file_path = self.file_path / file_path
+        return file_path.is_relative_to(self.file_path)
 
-    @property
-    def relative_path(self):
-        return self.file_path.relative_to(self.config.data)
+    def should_update_template(self, data_file_path, template_file_path: Path):
+        template_file_path = (self.config.data / template_file_path)
+        return template_file_path.with_suffix(data_file_path.suffix).is_relative_to(self.file_path)
 
-    def contains(self, file_path: Path):
-        return file_path.is_relative_to(self.relative_path)
+    def represents(self, file_path: Path):
+        file_path = self.config.data / file_path
+        if self.pymod_file_path == file_path:
+            return True
+        if self.yaml_file_path == file_path:
+            return True
+        return False
+        
+    def get_data_mod_for(self, file_path: Path):
+        if not self.is_in(file_path):
+            return None
+        if self.represents(file_path):
+            return self
+        return next(
+            submod.get_data_mod_for(file_path)
+            for submod in self.submodules
+        ) if self.submodules else None
+            
+    def get_update_function_for(self, file_path: Path):
+        file_path = self.config.data / file_path
+        logger.debug(f"file: {file_path}, yaml: {self.yaml_file_path}")
+        if self.pymod_file_path == file_path:
+            return self.update_pymod_data
+        if self.yaml_file_path == file_path:
+            return self.update_yaml_data
+        logger.warning(f"Data file '{file_path}' not registred as a valid data file.")
+        logger.warning(f"pymod file: {self.pymod_file_path}, yaml: {self.yaml_file_path}")
+        return False
+
+    def update(self, file_path: Path) -> list[Path]:
+        if not self.is_in(file_path):
+            return []
+        data_mod = self.get_data_mod_for(file_path)
+        update_fn = data_mod.get_update_function_for(file_path)
+        if update_fn:
+            update_fn()
+        return [
+            page for page in self.config.pages
+            if data_mod.should_update_template(file_path, page)
+        ]
 
     def data_for(self, file_path: Path):
-        if not self.contains(file_path):
+        if not self.is_in(file_path):
             return {}
-        return {**self.yaml_data, **self.global_data, **self.file_data(file_path)}
+        data = {
+            **self.yaml_data, 
+            **self.global_data, 
+            **self.file_data(file_path)
+        }
+        for submod in self.submodules:
+            if self.is_in(file_path):
+                data = {
+                    **data, **submod.data_for(file_path)
+                }
+        return data
