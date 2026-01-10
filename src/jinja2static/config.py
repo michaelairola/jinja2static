@@ -58,7 +58,7 @@ class Config:
         }
         config_data = pyproject_data.get("tools", {}).get("jinja2static", {})
         config_data = {
-            k: project_path / Path(v)
+            k: project_path / Path(v) if project_path != Path.cwd() else Path(v)
             for k, v in config_data.items()
             if k in [k for k in cls.__dataclass_fields__.keys()]
         }
@@ -70,7 +70,7 @@ class Config:
         return config
 
     def __post_init__(self):
-        self.data_module = DataModule(config=self, module_path=self.data)
+        self.data_module = DataModule(config=self, file_path=self.data)
 
     @property
     def pages(self) -> list[str]:

@@ -6,6 +6,7 @@ import logging
 import sys
 import traceback
 from dataclasses import dataclass, field
+from pathlib import Path
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
@@ -36,9 +37,10 @@ def per_page_data(func):
     return func
 
 
-def load_python_module(file_path: Path):
-    module_name = str(file_path).replace("/", ".").removesuffix(".py")
-    logger.debug(f"Getting module data from '{file_path}'")
+def load_pymod(file_path: Path):
+    suffix = ".__init__.py" if file_path.name == "__init__.py" else ".py"
+    module_name = str(file_path).replace("/", ".").removesuffix(suffix)
+    logger.debug(f"Getting module '{module_name}' from '{file_path}'")
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     if not spec or not spec.loader:
         logger.warning(f"Could not find module spec for '{module_name}'")
@@ -54,10 +56,10 @@ def load_python_module(file_path: Path):
 
 def get_callback_functions(data_module: DataModule):
     data_functions = {JinjaDataFunction.GLOBAL: [], JinjaDataFunction.PER_PAGE: []}
-    file_path = data_module.python_module_file_path
+    file_path = data_module.pymod_file_path
     if not file_path:
         return data_functions
-    module = load_python_module(file_path)
+    module = load_pymod(file_path)
     if not module:
         return data_functions
     all_functions = [
@@ -74,7 +76,7 @@ def get_callback_functions(data_module: DataModule):
 @dataclass
 class DataModule:
     config: Config = field()
-    module_path: Path = field()
+    file_path: Path = field()
 
     _functions = {}
 
@@ -143,18 +145,21 @@ class DataModule:
         return per_file_data
 
     @property
-    def python_module_file_path(self):
-        file_path_py = self.module_path.with_suffix(".py")
+    def pymod_file_path(self):
+        file_path = self.file_path
+        file_path_py = file_path.with_suffix(".py")
         if file_path_py.exists():
             return file_path_py
-        if self.module_path.exists():
-            return file_path
-        logger.debug(f"No data module file found for '{self.module_path}'")
+        if file_path.is_dir():
+            file_path = file_path / "__init__.py"
+            if file_path.exists():
+                return file_path
+        logger.debug(f"No data module file found for '{file_path}'")
         return None
 
     @property
     def yaml_file_path(self):
-        file_path = self.module_path
+        file_path = self.file_path
         possible_yamls = [
             file_path.with_suffix(".yaml"),
             file_path.with_suffix(".yml"),
@@ -164,12 +169,12 @@ class DataModule:
         for file_path in possible_yamls:
             if file_path.exists():
                 return file_path
-        logger.debug(f"No yaml file found for '{self.module_path}'")
+        logger.debug(f"No yaml file found for '{self.file_path}'")
         return None
 
     @property
     def relative_path(self):
-        return self.module_path.relative_to(self.config.data)
+        return self.file_path.relative_to(self.config.data)
 
     def contains(self, file_path: Path):
         return file_path.is_relative_to(self.relative_path)

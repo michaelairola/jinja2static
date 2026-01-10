@@ -85,7 +85,7 @@ async def file_watcher(config: Config):
     )
     tasks.append(create_task(detect_changes_copy_asset(config.assets, config)))
     data_mod = config.data_module
-    pymod_path = data_mod.python_module_file_path
+    pymod_path = data_mod.pymod_file_path
     if pymod_path:
         tasks.append(
             create_task(
