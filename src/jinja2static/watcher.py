@@ -13,34 +13,43 @@ from .templates import build_page
 
 logger = logging.getLogger(__name__)
 
+
 def template_file_update(config: Config, file_path: Path):
     start_time = time.perf_counter()
     config.update_dependency_graph(file_path)
     files_to_rebuild = config.get_dependencies(file_path)
     if file_path in config.pages:
         files_to_rebuild.add(file_path)
-    logger.info(f"Rebuilding {[str(file.relative_to(config.templates)) for file in files_to_rebuild]}...")
+    logger.info(
+        f"Rebuilding {[str(file.relative_to(config.templates)) for file in files_to_rebuild]}..."
+    )
     for file_path in files_to_rebuild:
         build_page(config, file_path)
     end_time = time.perf_counter()
     logger.info(f"Rebuilt in {(end_time - start_time):.4f} seconds")
 
+
 def detect_changes_copy_asset(config: Config, file_path: Path):
     copy_asset_file(config, file_path.relative_to(config.assets))
+
 
 def data_file_update(config: Config, file_path: Path):
     start_time = time.perf_counter()
     config.data_module.update(file_path)
     files_to_rebuild = config.data_module.effected_pages(file_path)
-    logger.info(f"Rebuilding {[str(file.relative_to(config.templates)) for file in files_to_rebuild]}...")
+    logger.info(
+        f"Rebuilding {[str(file.relative_to(config.templates)) for file in files_to_rebuild]}..."
+    )
     for file_path in files_to_rebuild:
         build_page(config, file_path)
     end_time = time.perf_counter()
     logger.info(f"Rebuilt in {(end_time - start_time):.4f} seconds")
 
-def tbd(_: Config, _x: Path): 
+
+def tbd(_: Config, _x: Path):
     logger.warning("TBD")
     return
+
 
 def update_project_callback(config: Config, file_path: Path):
     if config.templates in file_path.parents:
@@ -50,6 +59,7 @@ def update_project_callback(config: Config, file_path: Path):
     if file_path in config.data_module:
         return data_file_update, tbd
     return None, None
+
 
 async def file_watcher(config: Config):
     logger.info(f"Watching for file changes in '{config.project_path}'...")
@@ -62,7 +72,11 @@ async def file_watcher(config: Config):
                 continue
             match change:
                 case Change.modified | Change.added:
-                    msg = f"File '{file_path_str}' has changed..." if change == Change.modified else f"New file '{file_path_str}' has been created..."
+                    msg = (
+                        f"File '{file_path_str}' has changed..."
+                        if change == Change.modified
+                        else f"New file '{file_path_str}' has been created..."
+                    )
                     logger.info(msg)
                     update_fn(config, file_path)
                 case Change.deleted:

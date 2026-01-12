@@ -95,7 +95,8 @@ class Config:
 
     def get_dependencies(self, file_path: Path) -> list[str, Path]:
         return set(
-            dep for dep in self.dependency_graph.get(file_path, set()) 
+            dep
+            for dep in self.dependency_graph.get(file_path, set())
             if dep in self.pages
         )
 

@@ -3,13 +3,13 @@ from __future__ import annotations
 import importlib
 import inspect
 import logging
+import os
 import sys
 import traceback
 from dataclasses import dataclass, field
-from pathlib import Path
 from enum import Enum, auto
+from pathlib import Path
 from typing import TYPE_CHECKING
-import os
 
 import yaml
 
@@ -63,9 +63,7 @@ def get_callback_functions(data_module: DataModule):
     module = load_pymod(file_path)
     if not module:
         return data_functions
-    all_functions = [
-        f for (_, f) in inspect.getmembers(module, inspect.isfunction)
-    ]
+    all_functions = [f for (_, f) in inspect.getmembers(module, inspect.isfunction)]
     for function in all_functions:
         func_type = getattr(function, "jinja2static", None)
         if not func_type:
@@ -86,15 +84,15 @@ class DataModule:
             return
         logger.debug(f"Getting subpaths for {self.file_path}")
         subpaths = [
-            file_path for file_path in self.file_path.iterdir() 
-            if file_path.suffix == ".py" and
-            file_path != self.pymod_file_path and 
-            file_path != self.yaml_file_path and
-            file_path.name != "__pycache__"  # TODO: make this more robust
-
+            file_path
+            for file_path in self.file_path.iterdir()
+            if file_path.suffix == ".py"
+            and file_path != self.pymod_file_path
+            and file_path != self.yaml_file_path
+            and file_path.name != "__pycache__"  # TODO: make this more robust
         ]
-        logger.debug(f"Recursing through {[ path.name for path in subpaths]}")
-        self.submodules = [ 
+        logger.debug(f"Recursing through {[path.name for path in subpaths]}")
+        self.submodules = [
             DataModule(config=self.config, file_path=file_path)
             for file_path in subpaths
         ]
@@ -190,38 +188,50 @@ class DataModule:
             if file_path.exists():
                 return file_path
         return None
-    
+
     def is_data_file_path(self, file_path: Path):
         if self.pymod_file_path == file_path:
             return True
         if self.yaml_file_path == file_path:
             return True
         return False
-    
+
     def __contains__(self, file_path: Path):
-        return self.is_data_file_path(file_path) or file_path.is_relative_to(self.config.data)        
-            
+        return self.is_data_file_path(file_path) or file_path.is_relative_to(
+            self.config.data
+        )
+
     def get_update_function_for(self, file_path: Path):
         logger.debug(f"file: '{file_path}', yaml: '{self.yaml_file_path}'")
         if self.pymod_file_path == file_path:
             return self.update_pymod_data
         if self.yaml_file_path == file_path:
             return self.update_yaml_data
-        logger.warning(f"Data file '{file_path}' not registred as a valid data file for '{self.file_path}'.")
-        logger.warning(f"pymod file: {self.pymod_file_path}, yaml: {self.yaml_file_path}")
+        logger.warning(
+            f"Data file '{file_path}' not registred as a valid data file for '{self.file_path}'."
+        )
+        logger.warning(
+            f"pymod file: {self.pymod_file_path}, yaml: {self.yaml_file_path}"
+        )
         return False
-    
+
     def get_data_mod_for(self, file_path: Path):
         if self.is_data_file_path(file_path):
             return self
-        return next(
-            submod.get_data_mod_for(file_path)
-            for submod in self.submodules
-        ) if self.submodules else None
+        return (
+            next(submod.get_data_mod_for(file_path) for submod in self.submodules)
+            if self.submodules
+            else None
+        )
 
     def effects_template_file(self, file_path: Path) -> bool:
-        data_file_path = (self.config.data / file_path.relative_to(self.config.templates)).with_suffix("")
-        return self.file_path.with_suffix("") in [ data_file_path, *data_file_path.parents ]
+        data_file_path = (
+            self.config.data / file_path.relative_to(self.config.templates)
+        ).with_suffix("")
+        return self.file_path.with_suffix("") in [
+            data_file_path,
+            *data_file_path.parents,
+        ]
 
     def update(self, file_path: Path) -> list[Path]:
         if not file_path in self:
@@ -231,30 +241,22 @@ class DataModule:
         if update_fn:
             return update_fn()
         return [
-            page for page in self.config.pages
-            if data_mod.effects_template_file(page)
+            page for page in self.config.pages if data_mod.effects_template_file(page)
         ]
-    
+
     def effected_pages(self, file_path: Path):
         if not file_path in self:
             return []
         data_mod = self.get_data_mod_for(file_path)
         return [
-            page for page in self.config.pages
-            if data_mod.effects_template_file(page)
+            page for page in self.config.pages if data_mod.effects_template_file(page)
         ]
 
     def data_for(self, file_path: Path):
-        """ Get data for a specific template file path """
+        """Get data for a specific template file path"""
         if not self.effects_template_file(file_path):
             return {}
-        data = {
-            **self.yaml_data, 
-            **self.global_data, 
-            **self.per_file_data(file_path)
-        }
+        data = {**self.yaml_data, **self.global_data, **self.per_file_data(file_path)}
         for submod in self.submodules:
-            data = {
-                **data, **submod.data_for(file_path)
-            }
+            data = {**data, **submod.data_for(file_path)}
         return data
