@@ -38,7 +38,7 @@ class Config:
             logger.debug(f"Filepath '{file_path}' is a configuration file.")
             project_path = file_path.parent
             pyproject_path = file_path
-
+        project_path = project_path.absolute()
         pyproject_data = {}
         try:
             with open(pyproject_path, "rb") as f:
@@ -58,7 +58,7 @@ class Config:
         }
         config_data = pyproject_data.get("tools", {}).get("jinja2static", {})
         config_data = {
-            k: project_path / Path(v) if project_path != Path.cwd() else Path(v)
+            k: (project_path / Path(v)).absolute()
             for k, v in config_data.items()
             if k in [k for k in cls.__dataclass_fields__.keys()]
         }
@@ -75,7 +75,7 @@ class Config:
     @property
     def pages(self) -> list[str]:
         return [
-            p.relative_to(self.templates)
+            p.absolute()
             for p in Path(self.templates).rglob("*")
             if p.is_file() and not p.name.startswith("_")
         ]
@@ -94,7 +94,10 @@ class Config:
         return dict(child_to_parent)
 
     def get_dependencies(self, file_path: Path) -> list[str, Path]:
-        return self.dependency_graph.get(file_path, set())
+        return set(
+            dep for dep in self.dependency_graph.get(file_path, set()) 
+            if dep in self.pages
+        )
 
     def data_for(self, file_path: Path):
         return self.data_module.data_for(file_path)

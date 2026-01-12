@@ -58,7 +58,7 @@ def delete_template_file(config: Config, file_path: Path):
 RESUME_CHANGES = [
     ChangeAssertion(touch_template_file, "index.html", { Change.modified: [ "index.html" ]}),
     ChangeAssertion(touch_asset_file, "index.css", { Change.modified: [ "index.css" ]}),
-    # ChangeAssertion(touch_data_file, "data.yaml", { Change.modified: [ "index.html" ]}),
+    ChangeAssertion(touch_data_file, "data.yaml", { Change.modified: [ "index.html" ]}),
     # ChangeAssertion(touch_template_file, "RANDO_FILE.html", { Change.added: [ "RANDO_FILE.html" ]}),
     # ChangeAssertion(delete_template_file, "RANDO_FILE.html", { Change.deleted: [ ]}),
     # ChangeAssertion(delete_template_file, "RANDO_FILE.html", { Change.deleted: [ "RANDO_FILE.html" ]}),

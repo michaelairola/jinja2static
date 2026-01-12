@@ -19,14 +19,14 @@ logger = logging.getLogger(__name__)
 
 def build_page(config: Config, filepath: Path) -> bool:
     return_status = True
-    config.dist.mkdir(parents=True, exist_ok=True)
+    template_filepath = filepath.relative_to(config.templates)
     data = config.data_for(filepath)
     try:
-        logger.debug(f"Building '{filepath}' with {data=}")
+        logger.debug(f"Building '{template_filepath}' with {data=}")
         rendered_file = (
             Environment(loader=FileSystemLoader(config.templates))
-            .get_template(str(filepath))
-            .render(config=config, filepath=filepath, **data)
+            .get_template(str(template_filepath))
+            .render(config=config, **data)
         )
     except UndefinedError as e:
         rendered_file = f"Building '{filepath}': {e}"
@@ -38,7 +38,7 @@ def build_page(config: Config, filepath: Path) -> bool:
         logger.error(f"Unable to render '{filepath}'")
         rendered_file = rendered_file.replace("\n", "<br/>")
         return_status = False
-    DST_FILE_PATH = config.dist / filepath
+    DST_FILE_PATH = config.dist / template_filepath
     DST_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(DST_FILE_PATH, "w") as f:
         f.write(rendered_file)
@@ -47,15 +47,16 @@ def build_page(config: Config, filepath: Path) -> bool:
 
 def build_pages(config: Config) -> bool:
     logger.info(
-        f"Building pages {[str(page) for page in config.pages]} from '{config.templates}'..."
+        f"Building pages {[ str(page.relative_to(config.templates)) for page in config.pages]} from '{config.templates}'..."
     )
     return all(build_page(config, page) for page in config.pages)
 
 
-def find_all_subtemplates(config: Config, template_filepath: Path):
+def find_all_subtemplates(config: Config, filepath: Path):
     """
     Recursively finds all templates referenced by the given template.
     """
+    template_filepath = filepath.relative_to(config.templates)
     template_name = str(template_filepath)
     env = Environment(loader=FileSystemLoader(config.templates))
     found_templates = set()
@@ -66,7 +67,7 @@ def find_all_subtemplates(config: Config, template_filepath: Path):
             continue
 
         # Add to the set of processed templates
-        found_templates.add(current_template_name)
+        found_templates.add(config.templates / current_template_name)
 
         try:
             # Get the source and AST (Abstract Syntax Tree)

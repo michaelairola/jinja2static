@@ -16,7 +16,7 @@ import yaml
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .config import Config
+    from jinja2static.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def get_callback_functions(data_module: DataModule):
     if not module:
         return data_functions
     all_functions = [
-        f for (f_name, f) in inspect.getmembers(module, inspect.isfunction)
+        f for (_, f) in inspect.getmembers(module, inspect.isfunction)
     ]
     for function in all_functions:
         func_type = getattr(function, "jinja2static", None)
@@ -152,7 +152,7 @@ class DataModule:
                 logger.error(f"{e}")
                 logger.info(traceback.format_exc())
 
-    def file_data(self, file_path: Path):
+    def per_file_data(self, file_path: Path):
         per_file_data = {}
         for f in self.functions[JinjaDataFunction.PER_PAGE]:
             try:
@@ -191,66 +191,70 @@ class DataModule:
                 return file_path
         return None
     
-    def is_in(self, file_path: Path):
-        file_path = self.file_path / file_path
-        return file_path.is_relative_to(self.file_path)
-
-    def should_update_template(self, data_file_path, template_file_path: Path):
-        template_file_path = (self.config.data / template_file_path)
-        return template_file_path.with_suffix(data_file_path.suffix).is_relative_to(self.file_path)
-
-    def represents(self, file_path: Path):
-        file_path = self.config.data / file_path
+    def is_data_file_path(self, file_path: Path):
         if self.pymod_file_path == file_path:
             return True
         if self.yaml_file_path == file_path:
             return True
         return False
-        
+    
+    def __contains__(self, file_path: Path):
+        return self.is_data_file_path(file_path) or file_path.is_relative_to(self.config.data)        
+            
+    def get_update_function_for(self, file_path: Path):
+        logger.debug(f"file: '{file_path}', yaml: '{self.yaml_file_path}'")
+        if self.pymod_file_path == file_path:
+            return self.update_pymod_data
+        if self.yaml_file_path == file_path:
+            return self.update_yaml_data
+        logger.warning(f"Data file '{file_path}' not registred as a valid data file for '{self.file_path}'.")
+        logger.warning(f"pymod file: {self.pymod_file_path}, yaml: {self.yaml_file_path}")
+        return False
+    
     def get_data_mod_for(self, file_path: Path):
-        if not self.is_in(file_path):
-            return None
-        if self.represents(file_path):
+        if self.is_data_file_path(file_path):
             return self
         return next(
             submod.get_data_mod_for(file_path)
             for submod in self.submodules
         ) if self.submodules else None
-            
-    def get_update_function_for(self, file_path: Path):
-        file_path = self.config.data / file_path
-        logger.debug(f"file: {file_path}, yaml: {self.yaml_file_path}")
-        if self.pymod_file_path == file_path:
-            return self.update_pymod_data
-        if self.yaml_file_path == file_path:
-            return self.update_yaml_data
-        logger.warning(f"Data file '{file_path}' not registred as a valid data file.")
-        logger.warning(f"pymod file: {self.pymod_file_path}, yaml: {self.yaml_file_path}")
-        return False
+
+    def effects_template_file(self, file_path: Path) -> bool:
+        data_file_path = (self.config.data / file_path.relative_to(self.config.templates)).with_suffix("")
+        return self.file_path.with_suffix("") in [ data_file_path, *data_file_path.parents ]
 
     def update(self, file_path: Path) -> list[Path]:
-        if not self.is_in(file_path):
-            return []
+        if not file_path in self:
+            return
         data_mod = self.get_data_mod_for(file_path)
         update_fn = data_mod.get_update_function_for(file_path)
         if update_fn:
-            update_fn()
+            return update_fn()
         return [
             page for page in self.config.pages
-            if data_mod.should_update_template(file_path, page)
+            if data_mod.effects_template_file(page)
+        ]
+    
+    def effected_pages(self, file_path: Path):
+        if not file_path in self:
+            return []
+        data_mod = self.get_data_mod_for(file_path)
+        return [
+            page for page in self.config.pages
+            if data_mod.effects_template_file(page)
         ]
 
     def data_for(self, file_path: Path):
-        if not self.is_in(file_path):
+        """ Get data for a specific template file path """
+        if not self.effects_template_file(file_path):
             return {}
         data = {
             **self.yaml_data, 
             **self.global_data, 
-            **self.file_data(file_path)
+            **self.per_file_data(file_path)
         }
         for submod in self.submodules:
-            if self.is_in(file_path):
-                data = {
-                    **data, **submod.data_for(file_path)
-                }
+            data = {
+                **data, **submod.data_for(file_path)
+            }
         return data

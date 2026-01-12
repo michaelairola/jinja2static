@@ -12,7 +12,8 @@ requires-python = ">=3.10"
 dependencies = [
     "Jinja2>=3.1.6",
     "PyYaml>=6.0.3",
-    "watchfiles"
+    "watchfiles",
+    "tomli; python_version < '3.11'"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -24,6 +25,7 @@ classifiers = [
 dev = [
     "pytest",
     "ruff",
+    "isort",
     "twine",
     "build"
 ]
