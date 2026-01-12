@@ -8,7 +8,7 @@ import pytest
 from conftest import BLOG_PATH, RESUME_PATH
 from watchfiles import Change, awatch
 
-from jinja2static import Config, file_watcher
+from jinja2static import Config, watch
 
 
 @dataclass
@@ -107,7 +107,7 @@ async def test_run_dev_server_resume(
     config = Config.from_(project_file_path)
     logger.warning(f"DEV SERVER {test_type} TEST")
 
-    create_task(file_watcher(config))
+    create_task(watch(config))
 
     for ca in project_changes:
         for change, file_paths in ca.dst_file_changes.items():

@@ -1,17 +1,10 @@
 import logging
 import mimetypes
 import traceback
-from asyncio import (
-    CancelledError,
-    StreamReader,
-    StreamWriter,
-    create_task,
-    start_server,
-)
+from asyncio import StreamReader, StreamWriter, start_server
 from pathlib import Path
 
 from .config import Config
-from .watcher import file_watcher
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +91,7 @@ def configure_requestor(config: Config):
     return handle_request
 
 
-async def http_server(port: int, config: Config | None):
+async def serve(port: int, config: Config | None):
     try:
         if not config:
             return

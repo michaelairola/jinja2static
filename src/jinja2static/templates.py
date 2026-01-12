@@ -8,9 +8,6 @@ from typing import TYPE_CHECKING
 from jinja2 import Environment, FileSystemLoader, meta
 from jinja2.exceptions import TemplateNotFound, TemplateSyntaxError, UndefinedError
 
-# from .data import data_functions
-
-
 if TYPE_CHECKING:
     from .config import Config
 

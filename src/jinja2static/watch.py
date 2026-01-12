@@ -1,8 +1,5 @@
 import logging
-import os
 import time
-from asyncio import CancelledError, create_task, gather
-from functools import wraps
 from pathlib import Path
 
 from watchfiles import Change, awatch
@@ -61,7 +58,7 @@ def update_project_callback(config: Config, file_path: Path):
     return None, None
 
 
-async def file_watcher(config: Config):
+async def watch(config: Config):
     logger.info(f"Watching for file changes in '{config.project_path}'...")
     async for changes in awatch(config.project_path):
         for change, file_path in changes:

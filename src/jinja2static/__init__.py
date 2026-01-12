@@ -1,19 +1,15 @@
 import argparse
 import logging
-import shutil
-import time
 from asyncio import CancelledError, create_task, gather, run, sleep
 from functools import wraps
 from pathlib import Path
 
-from .assets import copy_asset_dir
 from .build import build
 from .config import Config
 from .init import initialize_project
 from .logger import configure_logging
-from .server import http_server
-from .templates import build_pages
-from .watcher import file_watcher
+from .serve import serve
+from .watch import watch
 
 logger = logging.getLogger(__name__)
 
@@ -41,20 +37,20 @@ async def build_from_project_path(config: Config, _):
 
 @allow_cancel
 async def run_watcher(config: Config, _):
-    return await file_watcher(config)
+    return await watch(config)
 
 
 @allow_cancel
-async def run_http_server(config: Config, args):
-    return await http_server(args.port, config)
+async def run_serve(config: Config, args):
+    return await serve(args.port, config)
 
 
 @allow_cancel
 async def run_dev_server(config: Config, args):
     build(config)
-    task = create_task(http_server(args.port, config))
+    task = create_task(serve(args.port, config))
     await sleep(1)
-    create_task(file_watcher(config))
+    create_task(watch(config))
     await gather(task)
 
 
@@ -105,7 +101,7 @@ MAIN_CLI = {
     },
     "serve": {
         "help": "Serves the built files in the 'dist' directory.",
-        "func": run_http_server,
+        "func": run_serve,
         "extra_args": [PORT_ARG],
     },
     "watch": {
