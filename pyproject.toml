@@ -1,13 +1,13 @@
 
 [project]
 name = "jinja2static"
-version = "0.4.0"
+version = "1.0.0"
 authors = [
     { name = "Michael Airola", email = "me@michaelairola.com" }
 ]
 description = "A simple static file generator based off of the Jinja templating language."
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
     "Jinja2>=3.1.6",
@@ -17,7 +17,6 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
