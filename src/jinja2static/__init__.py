@@ -26,8 +26,8 @@ def allow_cancel(func):
 
 
 @allow_cancel
-async def initialize(config, args):
-    initialize_project(args.project_file_path)
+async def initialize(config, _):
+    initialize_project(config)
 
 
 @allow_cancel
@@ -131,7 +131,10 @@ def main():
 
     cli_args = jinja2static.parse_args()
     configure_logging(cli_args.verbose)
-    config = Config.from_(cli_args.project_file_path)
+    cmd_name = getattr(cli_args, "command", None)
+    config = Config.from_(
+        cli_args.project_file_path, create_if_missing=cmd_name == "init"
+    )
     if hasattr(cli_args, "func") and config:
         run(cli_args.func(config, cli_args))
     elif not config:

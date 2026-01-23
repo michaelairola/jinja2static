@@ -24,12 +24,16 @@ class Config:
     data: Path = field()
 
     @classmethod
-    def from_(cls, file_path_str: str | None = None):
+    def from_(cls, file_path_str: str | None = None, create_if_missing: bool = False):
         logger.debug(f"Configuring project with '{file_path_str}'")
         file_path = Path(file_path_str) if file_path_str else Path.cwd()
         if not file_path.exists():
-            logger.error(f"File Path '{file_path}' does not exist")
-            return None
+            if create_if_missing:
+                logger.info(f"Creating new project directory at '{file_path}'")
+                file_path.mkdir(parents=True)
+            else:
+                logger.error(f"File Path '{file_path}' does not exist")
+                return None
         if file_path.is_dir():
             logger.debug(f"Filepath '{file_path}' is a directory.")
             project_path = file_path

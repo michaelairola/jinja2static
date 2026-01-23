@@ -52,6 +52,11 @@ Or run a local development server with hot reload:
 jinja2static serve
 ```
 
+*OR* do both at the same time!
+```bash
+jinja2static dev
+```
+
 ## Project Structure
 
 A typical Jinja2Static project looks like this:
